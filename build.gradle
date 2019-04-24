@@ -1,0 +1,22 @@
+plugins {
+    id 'java'
+}
+
+group 'me.idarkyy.dbc'
+version '1.0'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+    jcenter()
+
+    maven { url = 'https://jitpack.io' }
+}
+
+dependencies {
+    compile 'net.dv8tion:JDA:3.8.3_463'
+    compile 'com.github.iDarkyy:Yaml:master-SNAPSHOT'
+
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+}
