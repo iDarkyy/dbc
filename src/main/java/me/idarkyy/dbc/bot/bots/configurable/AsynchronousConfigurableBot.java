@@ -1,31 +1,40 @@
 package me.idarkyy.dbc.bot.bots.configurable;
 
 import me.idarkyy.dbc.bot.bots.AsynchronousStaticBot;
+import me.idarkyy.yaml.configuration.file.YamlConfiguration;
+import me.idarkyy.yaml.configuration.file.YamlConfigurationOptions;
 import me.idarkyy.yaml.configuration.file.YamlFile;
 
 import java.io.File;
 import java.io.IOException;
 
 public class AsynchronousConfigurableBot extends AsynchronousStaticBot {
-    private YamlFile config;
+    private YamlConfiguration config;
 
-    private AsynchronousConfigurableBot(YamlFile config, Object... listeners) {
+    private AsynchronousConfigurableBot(YamlConfiguration config, Object... listeners) {
         super(config.getString("token"), listeners);
 
         this.config = config;
     }
 
     private AsynchronousConfigurableBot(File file, String token, Object... listeners) {
-        this(new YamlFile(file), listeners);
+        this(YamlConfiguration.loadConfiguration(file), listeners);
     }
 
     public static AsynchronousConfigurableBot create(File file, Object... listeners) throws IOException {
-        YamlFile config = new YamlFile(file);
+        YamlConfiguration config = null;
 
-        if (!config.exists()) {
-            config.createNewFile(true);
+        if (!file.exists()) {
+            file.createNewFile();
+
+            config = YamlConfiguration.loadConfiguration(file);
 
             config.set("token", "token here");
+            config.save(file);
+        }
+
+        if(config == null) {
+            config = YamlConfiguration.loadConfiguration(file);
         }
 
         return new AsynchronousConfigurableBot(config, listeners);
@@ -35,7 +44,7 @@ public class AsynchronousConfigurableBot extends AsynchronousStaticBot {
         return new AsynchronousConfigurableBot(config, listeners);
     }
 
-    public YamlFile getConfig() {
+    public YamlConfiguration getConfig() {
         return config;
     }
 }
