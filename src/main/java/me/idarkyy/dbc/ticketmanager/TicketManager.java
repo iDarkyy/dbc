@@ -5,6 +5,9 @@ import net.dv8tion.jda.core.entities.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -65,8 +68,9 @@ public class TicketManager {
      * @param rolesWithAccess Roles with special access to the ticket
      * @return The ticket channel
      */
-    public TextChannel createTicket(Member member, Role... rolesWithAccess) {
-        TextChannel tc = (TextChannel) ticketsCategory.createTextChannel("ticket-" + asFourDigitString(nextNumber())).complete();
+
+    public TextChannel createTicket(String name, Member member, Role... rolesWithAccess) {
+        TextChannel tc = (TextChannel) ticketsCategory.createTextChannel(name.replace(" ", "-") + "-" + asFourDigitString(nextNumber())).complete();
 
         tc.createPermissionOverride(member).setAllow(allowedPermissions).queue();
 
@@ -76,6 +80,11 @@ public class TicketManager {
 
         return tc;
     }
+
+    public TextChannel createTicket(Member member, Role... rolesWithAccess) {
+        return createTicket("ticket", member, rolesWithAccess);
+    }
+
 
     /**
      * Closes the specified Ticket
@@ -105,14 +114,12 @@ public class TicketManager {
      * Closes the specified ticket
      * @param name The ticket name
      */
-    public boolean closeTicket(String name) {
-        for(TextChannel tc : ticketsCategory.getTextChannels()) {
-            if(getTicketName(tc).equalsIgnoreCase(name)) {
-                return closeTicket(tc);
-            }
-        }
+    public HashMap<TextChannel, Boolean> closeTickets(String name) {
+        HashMap<TextChannel, Boolean> after = new HashMap<>();
 
-        throw new IllegalArgumentException("Ticket named " + name + " not found in guild with ID " + guild.getId());
+        findTicketsByName(name).forEach(tc -> after.put(tc, closeTicket(tc)));
+
+        return after;
     }
 
 
@@ -120,28 +127,36 @@ public class TicketManager {
      * Closes the specified ticket
      * @param id The ticket int id (without zeros - not 0042, but 42)
      */
-    public boolean closeTicketWithId(int id) {
-        for(TextChannel tc : ticketsCategory.getTextChannels()) {
-            if(getTicketId(tc) == id) {
-                return closeTicket(tc);
-            }
+    public boolean closeTicket(int id) {
+        TextChannel tc = findTicketById(id);
+
+        if (tc == null) {
+            throw new IllegalArgumentException("Ticket with ID " + id + " not found in guild with ID " + guild.getId());
         }
 
-        throw new IllegalArgumentException("Ticket with int ID " + id + " not found in guild with ID " + guild.getId());
+        return closeTicket(tc);
     }
 
-    /**
-     * Closes the specified ticket
-     * @param id The ticket string id (with zeros - not 42, but 0042)
-     */
-    public boolean closeTicketWithId(String id) {
-        for(TextChannel tc : ticketsCategory.getTextChannels()) {
-            if(getTicketIdString(tc).equalsIgnoreCase(id)) {
-                return closeTicket(tc);
-            }
+    public void renameTicket(TextChannel textChannel, String name) {
+        name = name.toLowerCase().replace(" ", "-");
+
+        String id = getTicketIdString(textChannel);
+
+        textChannel.getManager().setName(name + "-" + id).queue();
+    }
+
+    public void renameTickets(String ticketName, String newName) {
+        findTicketsByName(ticketName).forEach(tc -> renameTicket(tc, newName));
+    }
+
+    public void renameTicket(int ticketId, String name) {
+        TextChannel tc = findTicketById(ticketId);
+
+        if (tc == null) {
+            throw new IllegalArgumentException("Ticket with ID " + ticketId + " not found in guild with ID " + guild.getId());
         }
 
-        throw new IllegalArgumentException("Ticket with string ID " + id + " not found in guild with ID " + guild.getId());
+        renameTicket(tc, name);
     }
 
     /**
@@ -157,6 +172,38 @@ public class TicketManager {
         } else {
             throw new IllegalArgumentException("Invalid ticket name: " + textChannel.getName());
         }
+    }
+
+    public TextChannel findTicket(TextChannel textChannel) {
+        Matcher matcher = pattern.matcher(textChannel.getName());
+
+        if (matcher.find()) {
+            return textChannel;
+        }
+
+        return null;
+    }
+
+    public List<TextChannel> findTicketsByName(String name) {
+        List<TextChannel> textChannels = new ArrayList<>();
+
+        for (TextChannel tc : ticketsCategory.getTextChannels()) {
+            if (getTicketName(tc).equalsIgnoreCase(name)) {
+                textChannels.add(tc);
+            }
+        }
+
+        return textChannels;
+    }
+
+    public TextChannel findTicketById(int id) {
+        for (TextChannel tc : ticketsCategory.getTextChannels()) {
+            if (getTicketId(tc) == id) {
+                return tc;
+            }
+        }
+
+        return null;
     }
 
     /**
